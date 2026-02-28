@@ -23,3 +23,6 @@ On first boot, the tool does not auto-create a special profile. If you want to p
 - The Profiles panel lets you pick a profile and either activate it or delete it.
 - The actions panel is the context menu of the profiles panel.
 - The buttons panel lets you do basic operations.
+
+### notes
+I regret to tell you but i'm sorry that i had dropped the compatibilities of previous version, in `58c613798742ba117160d33871f50c515acad7f7`. so if you use new code, please delete all config files and bitstreams and start over.
