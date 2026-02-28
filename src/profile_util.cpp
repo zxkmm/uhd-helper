@@ -181,32 +181,27 @@ bool ProfileManager::AddProfileFromActive(const std::string& display_name,
   }
 
   const auto& cfg = config_manager_->config();
-  Profile* official = FindProfileById(config_manager_->config(), "official");
-  if (!official) {
+  std::filesystem::path source_path = ImagesPath();
+  if (!FolderExists(source_path)) {
+    const Profile* active = nullptr;
+    if (!cfg.active_profile_id.empty()) {
+      active = FindProfileById(cfg, cfg.active_profile_id);
+    }
+    if (active && !active->folder_name.empty()) {
+      source_path = cfg.uhd_dir / active->folder_name;
+    }
+  }
+  if (!FolderExists(source_path)) {
     if (error) {
-      *error = "Official profile is missing";
+      *error = "No source profile found. Activate a profile first.";
     }
     return false;
-  }
-
-  std::filesystem::path source_path = cfg.uhd_dir / official->folder_name;
-  if (!FolderExists(source_path)) {
-    if (cfg.active_profile_id == "official" && FolderExists(ImagesPath())) {
-      source_path = ImagesPath();
-    } else {
-      if (error) {
-        *error = "Official profile folder does not exist: " +
-                 source_path.string();
-      }
-      return false;
-    }
   }
 
   Profile profile;
   profile.id = GenerateProfileId(display_name);
   profile.display_name = display_name.empty() ? profile.id : display_name;
   profile.folder_name = cfg.idle_profile_prefix + profile.id;
-  profile.is_official = false;
 
   const auto dest = cfg.uhd_dir / profile.folder_name;
   if (FolderExists(dest)) {
@@ -248,12 +243,6 @@ bool ProfileManager::DeleteProfile(const std::string& profile_id,
     }
     return false;
   }
-  if (it->is_official) {
-    if (error) {
-      *error = "Cannot delete the official profile";
-    }
-    return false;
-  }
 
   const auto target_path = cfg.uhd_dir / it->folder_name;
   if (FolderExists(target_path)) {
@@ -266,22 +255,12 @@ bool ProfileManager::DeleteProfile(const std::string& profile_id,
   return config_manager_->Save(error);
 }
 
-bool ProfileManager::ResetToOfficial(std::string* error) {
-  return ApplyProfile("official", error);
-}
-
 bool ProfileManager::RefreshFromDisk(std::string* error) {
   if (!EnsureUhdDir(error)) {
     return false;
   }
 
   auto& cfg = config_manager_->config();
-  const auto official_path = cfg.uhd_dir / cfg.official_profile_folder;
-  if (!FolderExists(official_path) && FolderExists(ImagesPath())) {
-    if (!FileUtil::CopyDir(ImagesPath(), official_path, error)) {
-      return false;
-    }
-  }
 
   std::unordered_set<std::string> known_folders;
   for (const auto& profile : cfg.profiles) {
@@ -310,7 +289,6 @@ bool ProfileManager::RefreshFromDisk(std::string* error) {
       continue;
     }
     profile.display_name = profile.id;
-    profile.is_official = false;
     cfg.profiles.push_back(std::move(profile));
   }
 

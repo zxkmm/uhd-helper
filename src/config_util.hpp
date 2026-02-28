@@ -13,7 +13,6 @@ struct AppConfig {
   std::filesystem::path uhd_dir;
   std::string images_folder_name;
   std::string idle_profile_prefix;
-  std::string official_profile_folder;
   std::string backup_profile_folder;
   std::string active_profile_id;
   std::vector<Profile> profiles;
@@ -38,7 +37,6 @@ class ConfigManager {
 std::filesystem::path DefaultConfigPath();
 Profile* FindProfileById(AppConfig& config, const std::string& id);
 const Profile* FindProfileById(const AppConfig& config, const std::string& id);
-void EnsureOfficialProfile(AppConfig& config);
 void NormalizeProfiles(AppConfig& config);
 
 }  // namespace uhd_helper

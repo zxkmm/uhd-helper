@@ -20,7 +20,6 @@ std::string GetImagesFolderName(UhdVersion version);
 
 struct AppDefaults {
   std::string idle_profile_prefix = "I_P_";
-  std::string official_profile_folder = "R_NI";
   std::string backup_profile_folder = "I_P__backup";
   int schema_version = 1;
 };

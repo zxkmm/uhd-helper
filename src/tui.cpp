@@ -18,9 +18,6 @@ std::string ProfileStatusLabel(const Profile& profile,
   if (profile.id == active_id) {
     label += " [active]";
   }
-  if (profile.is_official) {
-    label += " (official)";
-  }
   return label;
 }
 
@@ -74,15 +71,6 @@ void TuiApp::Run() {
     add_profile_name.clear();
     show_add_modal = true;
   });
-  auto reset_button = Button("Reset Official", [&] {
-    std::string error;
-    if (manager_->ResetToOfficial(&error)) {
-      ReloadProfiles();
-      SetStatus("Official profile applied", false);
-    } else {
-      SetStatus(error, true);
-    }
-  });
   auto refresh_button = Button("Refresh", [&] {
     std::string error;
     if (manager_->RefreshFromDisk(&error)) {
@@ -95,7 +83,7 @@ void TuiApp::Run() {
   auto quit_button = Button("Quit", [&] { screen.ExitLoopClosure()(); });
 
   auto bottom_buttons =
-      Container::Horizontal({add_button, reset_button, refresh_button, quit_button});
+      Container::Horizontal({add_button, refresh_button, quit_button});
 
   auto main_container =
       Container::Vertical({Container::Horizontal({menu, action_menu}),
@@ -142,8 +130,8 @@ void TuiApp::Run() {
 
     Element content = vbox({
         hbox({menu_box | flex, action_box | size(WIDTH, EQUAL, 24)}),
-        hbox({add_button->Render(), reset_button->Render(),
-              refresh_button->Render(), quit_button->Render()}) |
+        hbox({add_button->Render(), refresh_button->Render(),
+              quit_button->Render()}) |
             border,
         status | border,
         hint,
@@ -179,7 +167,8 @@ void TuiApp::Run() {
       }
       return true;
     }
-    if (event == Event::Return && !show_add_modal) {
+    if (!show_add_modal && action_menu->Focused() &&
+        event == Event::Return) {
       if (!profile_confirmed_) {
         SetStatus("Select a profile first (Enter)", true);
         return true;

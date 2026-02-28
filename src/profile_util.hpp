@@ -10,7 +10,6 @@ struct Profile {
   std::string id;
   std::string display_name;
   std::string folder_name;
-  bool is_official = false;
 };
 
 class ConfigManager;
@@ -24,7 +23,6 @@ class ProfileManager {
   bool AddProfileFromActive(const std::string& display_name,
                             std::string* error);
   bool DeleteProfile(const std::string& profile_id, std::string* error);
-  bool ResetToOfficial(std::string* error);
   bool RefreshFromDisk(std::string* error);
 
   const std::vector<Profile>& Profiles() const;

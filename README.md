@@ -17,7 +17,7 @@ ninja
 ```
 
 ### first boot
-Please make sure you have the original, untouched UHD dir before your first boot, because I cannot identify if you have the original, untouched UHD, so I have to treat that one as official on first boot.
+On first boot, the tool does not auto-create a special profile. If you want to preserve your current `images` state, create a profile from it before switching.
 
 ### basic operation
 - The Profiles panel lets you pick a profile and either activate it or delete it.

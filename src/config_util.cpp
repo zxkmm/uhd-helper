@@ -36,21 +36,12 @@ int GetInt(const json_min::Object& obj, const char* key, int fallback) {
   return static_cast<int>(*value->AsNumber());
 }
 
-bool GetBool(const json_min::Object& obj, const char* key, bool fallback) {
-  const auto* value = GetObjectValue(obj, key);
-  if (!value || !value->IsBool()) {
-    return fallback;
-  }
-  return *value->AsBool();
-}
-
 Profile ParseProfile(const json_min::Object& obj, const AppConfig& defaults) {
   Profile profile;
   profile.id = GetString(obj, "id", "");
   profile.display_name = GetString(obj, "display_name", profile.id);
   profile.folder_name =
       GetString(obj, "folder_name", defaults.idle_profile_prefix + profile.id);
-  profile.is_official = GetBool(obj, "is_official", false);
   return profile;
 }
 
@@ -59,7 +50,6 @@ json_min::Value ProfileToJson(const Profile& profile) {
   obj.emplace("id", json_min::Value(profile.id));
   obj.emplace("display_name", json_min::Value(profile.display_name));
   obj.emplace("folder_name", json_min::Value(profile.folder_name));
-  obj.emplace("is_official", json_min::Value(profile.is_official));
   return json_min::Value(std::move(obj));
 }
 
@@ -75,9 +65,7 @@ bool ConfigManager::Load(std::string* error) {
     config_.uhd_dir = GetUhdDirByOs(DetectOs());
     config_.images_folder_name = GetImagesFolderName(UhdVersion::kDefault);
     config_.idle_profile_prefix = Defaults().idle_profile_prefix;
-    config_.official_profile_folder = Defaults().official_profile_folder;
     config_.backup_profile_folder = Defaults().backup_profile_folder;
-    EnsureOfficialProfile(config_);
     NormalizeProfiles(config_);
     return Save(error);
   }
@@ -122,9 +110,6 @@ bool ConfigManager::Load(std::string* error) {
                 GetImagesFolderName(UhdVersion::kDefault));
   cfg.idle_profile_prefix =
       GetString(root_obj, "idle_profile_prefix", Defaults().idle_profile_prefix);
-  cfg.official_profile_folder =
-      GetString(root_obj, "official_profile_folder",
-                                          Defaults().official_profile_folder);
   cfg.backup_profile_folder = GetString(root_obj, "backup_profile_folder",
                                         Defaults().backup_profile_folder);
   cfg.active_profile_id = GetString(root_obj, "active_profile_id", "");
@@ -143,10 +128,10 @@ bool ConfigManager::Load(std::string* error) {
   }
 
   config_ = std::move(cfg);
-  EnsureOfficialProfile(config_);
   NormalizeProfiles(config_);
-  if (config_.active_profile_id.empty()) {
-    config_.active_profile_id = "official";
+  if (!config_.active_profile_id.empty() &&
+      FindProfileById(config_, config_.active_profile_id) == nullptr) {
+    config_.active_profile_id.clear();
   }
   return true;
 }
@@ -160,8 +145,6 @@ bool ConfigManager::Save(std::string* error) const {
                    json_min::Value(config_.images_folder_name));
   root_obj.emplace("idle_profile_prefix",
                    json_min::Value(config_.idle_profile_prefix));
-  root_obj.emplace("official_profile_folder",
-                   json_min::Value(config_.official_profile_folder));
   root_obj.emplace("backup_profile_folder",
                    json_min::Value(config_.backup_profile_folder));
   root_obj.emplace("active_profile_id",
@@ -221,24 +204,6 @@ const Profile* FindProfileById(const AppConfig& config, const std::string& id) {
   return nullptr;
 }
 
-void EnsureOfficialProfile(AppConfig& config) {
-  Profile* existing = FindProfileById(config, "official");
-  if (!existing) {
-    Profile official;
-    official.id = "official";
-    official.display_name = "NI Official";
-    official.folder_name = config.official_profile_folder;
-    official.is_official = true;
-    config.profiles.push_back(std::move(official));
-    return;
-  }
-  existing->folder_name = config.official_profile_folder;
-  existing->is_official = true;
-  if (existing->display_name.empty()) {
-    existing->display_name = "NI Official";
-  }
-}
-
 void NormalizeProfiles(AppConfig& config) {
   std::unordered_set<std::string> seen_ids;
   std::vector<Profile> normalized;
@@ -256,11 +221,7 @@ void NormalizeProfiles(AppConfig& config) {
       profile.display_name = profile.id;
     }
     if (profile.folder_name.empty()) {
-      if (profile.is_official) {
-        profile.folder_name = config.official_profile_folder;
-      } else {
-        profile.folder_name = config.idle_profile_prefix + profile.id;
-      }
+      profile.folder_name = config.idle_profile_prefix + profile.id;
     }
     normalized.push_back(std::move(profile));
   }
